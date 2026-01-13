@@ -22,7 +22,8 @@ namespace RoomManagerApp.Controllers
         // GET: Rooms
         public async Task<IActionResult> Index()
         {
-            return View(await _context.Rooms.ToListAsync());
+            return View(await _context.Rooms
+                .OrderBy(r=>r.Name).ToListAsync());
         }
 
         // GET: Rooms/Details/5
@@ -48,14 +49,12 @@ namespace RoomManagerApp.Controllers
         {
             return View();
         }
-
         // POST: Rooms/Create
-        // To protect from overposting attacks, enable the specific properties you want to bind to.
-        // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("Id,OrganizationId,Name,Description,CreatedAt,UpdatedAt")] Room room)
+        public async Task<IActionResult> Create([Bind("OrganizationId,Name,Description")] Room room)
         {
+           
             if (ModelState.IsValid)
             {
                 _context.Add(room);
@@ -82,11 +81,9 @@ namespace RoomManagerApp.Controllers
         }
 
         // POST: Rooms/Edit/5
-        // To protect from overposting attacks, enable the specific properties you want to bind to.
-        // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("Id,OrganizationId,Name,Description,CreatedAt,UpdatedAt")] Room room)
+        public async Task<IActionResult> Edit(int id, [Bind("Id,OrganizationId,Name,Descriptionz")] Room room)
         {
             if (id != room.Id)
             {

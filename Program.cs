@@ -1,14 +1,31 @@
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using RoomManagerApp.Data;
+using RoomManagerApp.Models;
+
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Context
+builder.Services.AddDbContext<RoomManagerDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("RoomManagerDb"))
+);
+
+// Identity
+builder.Services.AddIdentity<Users, IdentityRole>(options =>
+{
+    options.Password.RequireDigit = false;
+    options.Password.RequiredLength = 6;
+    options.Password.RequireNonAlphanumeric = false;
+    options.Password.RequireUppercase = false;
+})
+    .AddEntityFrameworkStores<RoomManagerDbContext>()
+    .AddDefaultTokenProviders();
 
 // Add services to the container.
 builder.Services.AddControllersWithViews();
 
-builder.Services.AddDbContext<RoomManagerDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("RoomManagerDb"))
-);
+
 
 var app = builder.Build();
 
@@ -24,6 +41,8 @@ app.UseHttpsRedirection();
 app.UseStaticFiles();
 
 app.UseRouting();
+
+app.UseAuthentication();    
 
 app.UseAuthorization();
 

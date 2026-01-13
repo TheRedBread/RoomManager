@@ -1,9 +1,10 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using RoomManagerApp.Models;
 
 namespace RoomManagerApp.Data
 {
-    public class RoomManagerDbContext : DbContext
+    public class RoomManagerDbContext : IdentityDbContext<Users>
     {
 
         public DbSet<Room> Rooms { get; set; } = null!;
