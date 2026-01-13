@@ -1,7 +1,14 @@
+using Microsoft.EntityFrameworkCore;
+using RoomManagerApp.Data;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddControllersWithViews();
+
+builder.Services.AddDbContext<RoomManagerDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("RoomManagerDb"))
+);
 
 var app = builder.Build();
 
