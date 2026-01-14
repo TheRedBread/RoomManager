@@ -1,0 +1,76 @@
+﻿@model RoomManagerApp.Models.Room
+@using Microsoft.AspNetCore.Identity
+@using RoomManagerApp.Models
+@inject UserManager<Users> UserManager
+
+<h2>Permissions for @Model.Name</h2>
+
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>User</th>
+            <th>Permission</th>
+            <th>Action</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var perm in Model.Permissions)
+        {
+            <tr>
+                <td>@perm.User.UserName</td>
+                <td>
+                    <form asp-controller="Rooms" 
+                          asp-action="UpdatePermissions"
+                          asp-route-id="@Model.Id"
+                        method="post">
+                        <input type="hidden" name="roomId" value="@Model.Id" />
+                        <input type="hidden" name="permissionId" value="@perm.Id" />
+                        <select name="permission" class="form-select">
+
+                            <option value="Viewer"
+                                    selected="@(perm.Permission == RoomPermissionLevel.Viewer)">Viewer</option>
+
+                            <option value="Editor"
+                                    selected="@(perm.Permission == RoomPermissionLevel.Editor)">Editor</option>
+
+                            <option value="Owner" 
+                                    selected="@(perm.Permission == RoomPermissionLevel.Owner)">Owner</option>
+                        </select>
+                        <button type="submit" class="btn btn-primary btn-sm">Update</button>
+                    </form>
+                </td>
+                <td>
+                    <form asp-controller="Rooms"
+                        asp-action="RemoveUserFromRoom" 
+                        asp-route-id="@Model.Id"
+                        method="post">
+                        <input type="hidden" name="roomId" value="@Model.Id" />
+                        <input type="hidden" name="userId" value="@perm.UserId" />
+                        <button type="submit" class="btn btn-danger btn-sm">Remove</button>
+                    </form>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<h3>Add User</h3>
+<form asp-controller="Rooms"
+    asp-action="AddUserToRoom" 
+    asp-route-id="@Model.Id"
+    method="post">
+    <input type="hidden" name="roomId" value="@Model.Id" />
+    <select name="userId" class="form-select">
+        @foreach (var user in UserManager.Users)
+        {
+            <option value="@user.Id">@user.UserName</option>
+        }
+    </select>
+    <select name="permission" class="form-select">
+        <option value="Viewer">Viewer</option>
+        <option value="Editor">Editor</option>
+        <option value="Owner">Owner</option>
+    </select>
+    <button type="submit" class="btn btn-success mt-2">Add User</button>
+</form>
