@@ -24,8 +24,7 @@ builder.Services.AddIdentity<Users, IdentityRole>(options =>
     options.Password.RequireUppercase = false;
 })
     .AddEntityFrameworkStores<RoomManagerDbContext>()
-    .AddDefaultTokenProviders()
-    .AddApiEndpoints();
+    .AddDefaultTokenProviders();
 
 
 
@@ -69,7 +68,6 @@ app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapIdentityApi<Users>();
 
 
 app.MapControllerRoute(
