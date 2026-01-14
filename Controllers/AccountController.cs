@@ -18,6 +18,13 @@ namespace RoomManagerApp.Controllers
             this.roleManager = roleManager;
         }
 
+
+        public IActionResult AccessDenied(string? returnUrl = null)
+        {
+            ViewData["ReturnUrl"] = returnUrl;
+            return View();
+        }
+
         [HttpGet]
         public IActionResult Login()
         {
