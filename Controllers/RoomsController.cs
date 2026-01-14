@@ -14,7 +14,6 @@ using RoomManagerApp.Models;
 
 namespace RoomManagerApp.Controllers
 {
-
     public class RoomsController : Controller
     {
 
@@ -61,6 +60,8 @@ namespace RoomManagerApp.Controllers
             }
 
             var room = await _context.Rooms
+                .Include(r => r.Permissions)
+                .ThenInclude(p => p.User)
                 .FirstOrDefaultAsync(m => m.Id == id);
             
             if (room == null){ return NotFound(); }

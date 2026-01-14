@@ -32,7 +32,6 @@ namespace RoomManagerApp.Services
                 {
                     var adminUser = new Users
                     {
-                        FullName = "Code Hub",
                         UserName = adminEmail,
                         NormalizedUserName = adminEmail.ToUpper(),
                         Email = adminEmail,

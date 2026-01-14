@@ -68,7 +68,6 @@ namespace RoomManagerApp.Controllers
 
             var user = new Users
             {
-                FullName = model.Name,
                 UserName = model.Email,
                 NormalizedUserName = model.Email.ToUpper(),
                 Email = model.Email,
