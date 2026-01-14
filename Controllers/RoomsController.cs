@@ -1,23 +1,32 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Claims;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using RoomManagerApp.Data;
 using RoomManagerApp.Models;
 
+
 namespace RoomManagerApp.Controllers
 {
+
+
     public class RoomsController : Controller
     {
+
+        private readonly UserManager<Users> _userManager;
+
         private readonly RoomManagerDbContext _context;
 
-        public RoomsController(RoomManagerDbContext context)
+        public RoomsController(RoomManagerDbContext context, UserManager<Users> userManager)
         {
             _context = context;
+            _userManager = userManager;
         }
 
         // GET: Rooms
@@ -54,15 +63,32 @@ namespace RoomManagerApp.Controllers
         // POST: Rooms/Create
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Authorize]
         public async Task<IActionResult> Create([Bind("OrganizationId,Name,Description")] Room room)
         {
            
             if (ModelState.IsValid)
             {
                 _context.Add(room);
+
+
+                // Adding Owner Permission to room creator
+                var user = await _userManager.GetUserAsync(User);
+                var userId = user.Id;
+                await _context.SaveChangesAsync();
+                var ownerPermission = new RoomPermission
+                {
+                    RoomId = room.Id,
+                    UserId = userId,
+                    Permission = RoomPermissionLevel.Owner
+                };
+                _context.RoomPermissions.Add(ownerPermission);
+
                 await _context.SaveChangesAsync();
                 return RedirectToAction(nameof(Index));
             }
+
+
             return View(room);
         }
 

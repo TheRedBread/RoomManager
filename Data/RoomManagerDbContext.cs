@@ -7,7 +7,31 @@ namespace RoomManagerApp.Data
     public class RoomManagerDbContext : IdentityDbContext<Users>
     {
 
-        public DbSet<Room> Rooms { get; set; } = null!;
+        public DbSet<Room> Rooms { get; set; }
+        public DbSet<RoomPermission> RoomPermissions { get; set; }
+
+        public RoomManagerDbContext(DbContextOptions<RoomManagerDbContext> options) : base(options) { }
+
+
+        protected override void OnModelCreating(ModelBuilder builder)
+        {
+            base.OnModelCreating(builder);
+
+            // RoomPermission -> Room
+            builder.Entity<RoomPermission>()
+                .HasOne(rp => rp.Room)
+                .WithMany(r => r.Permissions)
+                .HasForeignKey(rp => rp.RoomId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // RoomPermission -> User
+            builder.Entity<RoomPermission>()
+                .HasOne(rp => rp.User)
+                .WithMany()
+                .HasForeignKey(rp => rp.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        }
+
 
         public override int SaveChanges()
         {
@@ -55,7 +79,6 @@ namespace RoomManagerApp.Data
         }
 
 
-        public RoomManagerDbContext(DbContextOptions<RoomManagerDbContext> options) : base(options) { }
 
     }
 }
