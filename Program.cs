@@ -1,3 +1,5 @@
+using System;
+using System.IO;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using RoomManagerApp.Data;
@@ -36,9 +38,9 @@ builder.Services.AddControllersWithViews().AddJsonOptions(o =>
 });
 
 builder.Services.AddEndpointsApiExplorer();
-
-
 builder.Services.AddSwaggerGen();
+
+
 
 
 var app = builder.Build();
@@ -49,9 +51,14 @@ await SeedService.SeedDatabase(app.Services);
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
 {
-    app.UseExceptionHandler("/Home/Error");
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
+
+    app.UseExceptionHandler(errorApp =>
+    {
+        errorApp.Run(async context =>
+            var error
+        )
+    });
 
 }
 
@@ -60,7 +67,9 @@ app.UseDeveloperExceptionPage();
 app.UseSwagger();
 app.UseSwaggerUI();
 
-app.UseStatusCodePagesWithReExecute("/Home/Error/{0}");
+
+
+
 app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseRouting();

@@ -11,7 +11,7 @@ namespace RoomManagerApp.Controllers
 {
     [Route("api/Rooms")]
     [ApiController]
-    public class RoomsApiController : Controller
+    public class RoomsApiController : ControllerBase
     {
         private readonly RoomManagerDbContext _context;
         private readonly UserManager<Users> _userManager;
@@ -29,8 +29,9 @@ namespace RoomManagerApp.Controllers
             _userManager = userManager;
         }
 
-        // GET: Rooms
+        // GET: api/Rooms
         [Authorize]
+        [HttpGet]
         public async Task<IActionResult> Index()
         {
             var userId = _userManager.GetUserId(User);
@@ -44,6 +45,8 @@ namespace RoomManagerApp.Controllers
                 {
                     Id = r.Id,
                     Name = r.Name,
+                    CreatedAt = r.CreatedAt,
+                    UpdatedAt = r.UpdatedAt,
                     Permissions = r.Permissions
                     .Select(p => new RoomPermissionDTO
                     {
@@ -57,6 +60,89 @@ namespace RoomManagerApp.Controllers
 
             return Ok(rooms);
 
+        }
+
+        // GET: api/Rooms/Details/5
+        [Authorize]
+        [HttpGet("Details/{id}")]
+        public async Task<IActionResult> Details(int? id)
+        {
+            if (id == null) return NotFound();
+
+            var room = await _context.Rooms
+                .Include(r => r.Permissions)
+                .ThenInclude(p => p.User)
+                .FirstOrDefaultAsync(m => m.Id == id);
+
+
+            if (room == null) return NotFound();
+
+            var permission = await GetUserPermission(room.Id);
+            if (permission == null)
+            {
+                return Forbid();
+            }
+
+            var roomDto = new RoomDTO
+            {
+                Id = room.Id,
+                Name = room.Name,
+                CreatedAt = room.CreatedAt,
+                UpdatedAt = room.UpdatedAt,
+                Permissions = room.Permissions
+                .Select(p => new RoomPermissionDTO
+                    {
+                    Id = p.Id,
+                    RoomId = room.Id,
+                    RoomName = room.Name,
+                    UserId = p.UserId,
+                    UserName = p.User.Email,
+                    Permission = p.Permission
+                    }).ToList()
+             };
+
+
+            return Ok(roomDto);
+        }
+
+
+
+        // POST: api/Rooms/Create
+        [HttpPost("Create")]
+        [Authorize]
+        public async Task<IActionResult> Create([FromBody] CreateRoomDTO model)
+        {
+
+            if (!ModelState.IsValid) { return BadRequest(); }
+
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null) return Forbid();
+            var userId = user.Id;
+
+
+            var room = new Room
+            {
+                Name = model.Name,
+                Permissions = new List<RoomPermission>()
+            };
+
+
+            _context.Add(room);
+            await _context.SaveChangesAsync();
+
+            // Adding Owner Permission to room creator
+            var ownerPermission = new RoomPermission
+            {
+                UserId = userId,
+                RoomId = room.Id,
+                Permission = RoomPermissionLevel.Owner
+            };
+            _context.RoomPermissions.Add(ownerPermission);
+
+            await _context.SaveChangesAsync();
+
+
+            return Ok();
         }
 
 

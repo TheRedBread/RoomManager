@@ -100,7 +100,6 @@ namespace RoomManagerApp.Controllers
                 await _context.SaveChangesAsync();
                 var ownerPermission = new RoomPermission
                 {
-                    RoomId = room.Id,
                     UserId = userId,
                     Permission = RoomPermissionLevel.Owner
                 };
