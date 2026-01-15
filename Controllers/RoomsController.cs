@@ -224,7 +224,6 @@ namespace RoomManagerApp.Controllers
         }
 
         // POST: Rooms/{id}/Permissions - Update
-        [HttpPost("Rooms/{id}/Permissions/Update")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> UpdatePermissions(int roomId, int permissionId, RoomPermissionLevel permission)
         {
@@ -245,12 +244,11 @@ namespace RoomManagerApp.Controllers
         }
 
         // POST: Rooms/{id}/Permissions - Create
-        [HttpPost("Rooms/{id}/Permissions/Add")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> AddUserToRoom(int roomId, string userId, RoomPermissionLevel permission)
         {
             var exists = await _context.RoomPermissions
-                .AnyAsync(rp => rp.RoomId == roomId);
+                .AnyAsync(rp => rp.RoomId == roomId && rp.UserId == userId);
 
             var EditPermission = await GetUserPermission(roomId);
             if (EditPermission == null || EditPermission.Permission < RoomPermissionLevel.Owner)
@@ -269,12 +267,10 @@ namespace RoomManagerApp.Controllers
                 await _context.SaveChangesAsync();
             }
             return RedirectToAction(nameof(Permissions), new { id = roomId });
-
         }
 
 
         // POST: Rooms/{id}/Permissions - Remove user
-        [HttpPost("Rooms/{id}/Permissions/Remove")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> RemoveUserFromRoom(int roomId, string userId)
         {

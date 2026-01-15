@@ -58,6 +58,9 @@ namespace RoomManagerApp.Controllers
                     }).ToList()
                 }).ToListAsync();
 
+            if (!rooms.Any())
+                return Ok("No rooms found for this user.");
+
             return Ok(rooms);
 
         }
@@ -67,7 +70,7 @@ namespace RoomManagerApp.Controllers
         [HttpGet("{id}")]
         public async Task<IActionResult> Details(int? id)
         {
-            if (id == null) return NotFound();
+            if (id == null) return NotFound("Room id not found");
 
             var room = await _context.Rooms
                 .Include(r => r.Permissions)
@@ -75,12 +78,12 @@ namespace RoomManagerApp.Controllers
                 .FirstOrDefaultAsync(m => m.Id == id);
 
 
-            if (room == null) return NotFound();
+            if (room == null) return NotFound("Room not found");
 
             var permission = await GetUserPermission(room.Id);
             if (permission == null)
             {
-                return Forbid();
+                return Forbid("You don't have permission to view this room");
             }
 
             var roomDto = new RoomDTO
@@ -113,18 +116,18 @@ namespace RoomManagerApp.Controllers
         public async Task<IActionResult> Create([FromBody] CreateRoomDTO model)
         {
 
-            if (!ModelState.IsValid) { return BadRequest(); }
+            if (!ModelState.IsValid) { return BadRequest("Model State is Invalid"); }
 
             var user = await _userManager.GetUserAsync(User);
-            if (user == null) return Forbid();
+            if (user == null) return Unauthorized("You Aren't logged in");
             var userId = user.Id;
 
 
             var room = new Room
             {
                 Name = model.Name,
-                CreatedAt = DateTime.Now,
-                UpdatedAt = DateTime.Now,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
                 Permissions = new List<RoomPermission>()
             };
 
@@ -148,24 +151,24 @@ namespace RoomManagerApp.Controllers
         }
         //PUT: api/Rooms/id
         [HttpPut("{id}")]
-        public async Task<IActionResult> Edit(int? id, [FromBody] EditRoomDTO model)
+        public async Task<IActionResult> Edit(int id, [FromBody] EditRoomDTO model)
         {
-            if (!ModelState.IsValid) { return BadRequest(); }
+            if (!ModelState.IsValid) { return BadRequest("Invalid Model state"); }
 
             var room = await _context.Rooms.FindAsync(id);
-            if (room == null) return NotFound();
+            if (room == null) return NotFound("room hasn't been found");
 
             var permission = await GetUserPermission(room.Id);
             if (permission == null || permission.Permission < RoomPermissionLevel.Editor)
             {
-                return Forbid();
+                return Forbid("You don't have permission to update this room");
             }
 
             if (model.Name != null) room.Name = model.Name;
 
             if (model.Description != null) room.Description = model.Description;
             if (model.OrganizationId.HasValue) room.OrganizationId = model.OrganizationId.Value;
-            
+
             room.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
@@ -174,17 +177,17 @@ namespace RoomManagerApp.Controllers
 
         }
 
-        // POST: api/Rooms/id
+        // Delete: api/Rooms/id
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(int id)
         {
             var room = await _context.Rooms.FindAsync(id);
-            if (room == null) return NotFound();
+            if (room == null) return NotFound("room hasn't been found");
 
             var permission = await GetUserPermission(room.Id);
             if (permission == null || permission.Permission < RoomPermissionLevel.Owner)
             {
-                return Forbid();
+                return Forbid("You don't have permission to delete this room");
             }
 
             _context.Rooms.Remove(room);
@@ -202,12 +205,12 @@ namespace RoomManagerApp.Controllers
                 .ThenInclude(p => p.User)
                 .FirstOrDefaultAsync(r => r.Id == id);
 
-            if (room == null) return NotFound();
+            if (room == null) return NotFound("room hasn't been found");
 
             var permission = await GetUserPermission(room.Id);
             if (permission == null || permission.Permission < RoomPermissionLevel.Owner)
             {
-                return Forbid();
+                return Forbid("You don't have permission to view permissions of this room");
             }
 
             var result = room.Permissions.Select(p => new RoomPermissionDTO
@@ -220,33 +223,35 @@ namespace RoomManagerApp.Controllers
                 Permission = p.Permission
             }).ToList();
 
+            if (!result.Any())
+                return Ok("No permissions found for this room, despite that you still viewed this without permission... HOW?");
 
             return Ok(result);
         }
 
         // POST: api/Rooms/{id}/Permissions
         [HttpPost("{id}/Permissions")]
-        public async Task<IActionResult> AddUserToRoom(int id, CreateRoomPermissionDTO model)
+        public async Task<IActionResult> AddUserToRoom(int id, [FromBody] CreateRoomPermissionDTO model)
         {
+            if (!ModelState.IsValid) return BadRequest("Model state is invalid");
 
-            if (model == null || string.IsNullOrEmpty(model.Email))
-                return BadRequest();
 
             var room = await _context.Rooms
                 .Include(r => r.Permissions)
                 .ThenInclude(p => p.User)
                 .FirstOrDefaultAsync(r => r.Id == id);
 
-            if (room == null) return NotFound();
+            if (room == null) return NotFound("room hasn't been found");
             var permission = await GetUserPermission(room.Id);
             if (permission == null || permission.Permission < RoomPermissionLevel.Owner)
             {
-                return Forbid();
+                return Forbid("You don't have permission to create permissions for this room");
             }
 
             var user = await _context.Users
                 .FirstOrDefaultAsync(u => u.Email == model.Email);
 
+            if (user == null) return NotFound("User not found");
 
             var alreadyExists = await _context.RoomPermissions
                 .AnyAsync(rp => rp.RoomId == id && rp.UserId == user.Id);
@@ -263,9 +268,81 @@ namespace RoomManagerApp.Controllers
 
             return NoContent();
         }
-    
-    
-    
-    
+
+
+        // Delete: api/Rooms/{id}/Permissions
+        [HttpDelete("{id}/Permissions")]
+        public async Task<IActionResult> RemoveUserFromRoom(int id, [FromBody] DeleteRoomPermissionDTO model)
+        {
+            if (!ModelState.IsValid) return BadRequest("Model state is invalid");
+
+            var room = await _context.Rooms
+                .Include(r => r.Permissions)
+                .ThenInclude(p => p.User)
+                .FirstOrDefaultAsync(r => r.Id == id);
+
+            if (room == null) return NotFound("room hasn't been found");
+            var permission = await GetUserPermission(room.Id);
+            if (permission == null || permission.Permission < RoomPermissionLevel.Owner)
+            {
+                return Forbid("You don't have permission to create permissions for this room");
+            }
+
+            var user = await _context.Users
+                .FirstOrDefaultAsync(u => u.Email == model.Email);
+
+            if (user == null) return NotFound("User not found");
+
+            var rp = await _context.RoomPermissions
+                .FirstOrDefaultAsync(r => r.RoomId == id && r.UserId == user.Id);
+
+            if (rp == null) NotFound("Permission not Found");
+
+            _context.RoomPermissions.Remove(rp);
+            await _context.SaveChangesAsync();
+
+            return NoContent();
+        }
+
+        // PUT: api/Rooms/{id}/Permissions
+        [HttpPut("{id}/Permissions")]
+        public async Task<IActionResult> UpdatePermissions(int id, [FromBody] EditRoomPermissionDTO model)
+        {
+            if (!ModelState.IsValid) return BadRequest("Invalid model");
+
+            var EditPermission = await GetUserPermission(id);
+            if (EditPermission == null || EditPermission.Permission < RoomPermissionLevel.Owner)
+            {
+                return Forbid("You don't have permission to Edit this room's permissions");
+            }
+
+            var room = await _context.Rooms
+                .Include(r => r.Permissions)
+                .ThenInclude(p => p.User)
+                .FirstOrDefaultAsync(r => r.Id == id);
+            
+            if (room == null) return NotFound("Room not found");
+
+            var user = await _context.Users
+                .FirstOrDefaultAsync(u => u.Email == model.Email);
+
+            if (user == null) return NotFound("User not found");
+
+
+            var rp = await _context.RoomPermissions
+                .FirstOrDefaultAsync(r => r.RoomId == id && r.UserId == user.Id);
+
+            if (rp == null) return NotFound("The user doesn't have permission on this room, create permit instead");
+
+
+            rp.Permission = model.Permission;
+
+            await _context.SaveChangesAsync();
+
+            return NoContent();
+
+        }
+
+
     }
 }
