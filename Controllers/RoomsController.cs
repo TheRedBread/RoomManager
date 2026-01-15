@@ -50,27 +50,21 @@ namespace RoomManagerApp.Controllers
                 );
         }
 
-        // GET: Rooms/Details/5
+        // GET: Rooms/Details/id
         [Authorize]
         public async Task<IActionResult> Details(int? id)
         {
-            if (id == null)
-            {
-                return NotFound();
-            }
+            if (id == null) return NotFound();
 
             var room = await _context.Rooms
                 .Include(r => r.Permissions)
                 .ThenInclude(p => p.User)
                 .FirstOrDefaultAsync(m => m.Id == id);
             
-            if (room == null){ return NotFound(); }
+            if (room == null) return NotFound(); 
 
             var permission = await GetUserPermission(room.Id);
-            if(permission == null)
-            {
-                return View("AccessDenied");
-            }
+            if (permission == null) return Forbid();
 
 
             return View(room);
@@ -88,52 +82,42 @@ namespace RoomManagerApp.Controllers
         [Authorize]
         public async Task<IActionResult> Create([Bind("OrganizationId,Name,Description")] Room room)
         {
-           
-            if (ModelState.IsValid)
+
+            if (!ModelState.IsValid) return View(room);
+
+            _context.Add(room);
+            await _context.SaveChangesAsync();
+                    
+
+            // Adding Owner Permission to room creator
+            var user = await _userManager.GetUserAsync(User);
+            await _context.SaveChangesAsync();
+            var ownerPermission = new RoomPermission
             {
-                _context.Add(room);
+                RoomId = room.Id,
+                UserId = user.Id,
+                Permission = RoomPermissionLevel.Owner
+            };
+            _context.RoomPermissions.Add(ownerPermission);
 
+            await _context.SaveChangesAsync();
+            return RedirectToAction(nameof(Index));
 
-                // Adding Owner Permission to room creator
-                var user = await _userManager.GetUserAsync(User);
-                var userId = user.Id;
-                await _context.SaveChangesAsync();
-                var ownerPermission = new RoomPermission
-                {
-                    UserId = userId,
-                    Permission = RoomPermissionLevel.Owner
-                };
-                _context.RoomPermissions.Add(ownerPermission);
-
-                await _context.SaveChangesAsync();
-                return RedirectToAction(nameof(Index));
-            }
-
-
-            return View(room);
         }
 
-        // GET: Rooms/Edit/5
+        // GET: Rooms/Edit/id
         public async Task<IActionResult> Edit(int? id)
         {
-            if (id == null)
-            {
-                return NotFound();
-            }
+            if (id == null) return NotFound();
 
             var room = await _context.Rooms.FindAsync(id);
-            if (room == null)
-            {
-                return NotFound();
-            }
+            if (room == null) return NotFound();
 
             var permission = await GetUserPermission(room.Id);
             if (permission == null || permission.Permission < RoomPermissionLevel.Editor)
             {
-                return View("AccessDenied");
+                return Forbid();
             }
-
-
 
             return View(room);
         }
@@ -143,62 +127,52 @@ namespace RoomManagerApp.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(int id, [Bind("Id,OrganizationId,Name,Description")] Room room)
         {
-            if (id != room.Id)
-            {
-                return NotFound();
-            }
+            if (id != room.Id) return NotFound();
 
             var permission = await GetUserPermission(room.Id);
             if (permission == null || permission.Permission < RoomPermissionLevel.Editor)
             {
-                return View("AccessDenied");
+                return Forbid();
             }
 
-            if (ModelState.IsValid)
+            if (!ModelState.IsValid) return View(room);
+
+            try
             {
-                try
-                {
-                    _context.Update(room);
-                    await _context.SaveChangesAsync();
-                }
-                catch (DbUpdateConcurrencyException)
-                {
-                    if (!RoomExists(room.Id))
-                    {
-                        return NotFound();
-                    }
-                    else
-                    {
-                        throw;
-                    }
-                }
-                return RedirectToAction(nameof(Index));
+                _context.Update(room);
+                await _context.SaveChangesAsync();
             }
+            catch (DbUpdateConcurrencyException)
+            {
+                if (!RoomExists(room.Id))
+                {
+                    return NotFound();
+                }
+                else
+                {
+                    throw;
+                }
+            }
+            return RedirectToAction(nameof(Index));
 
 
-            return View(room);
+            
         }
 
         // GET: Rooms/Delete/5
         public async Task<IActionResult> Delete(int? id)
         {
-            if (id == null)
-            {
-                return NotFound();
-            }
+            if (id == null) return NotFound();
 
-            var room = await _context.Rooms
-                .FirstOrDefaultAsync(m => m.Id == id);
-            if (room == null)
-            {
-                return NotFound();
-            }
+            var room = await _context.Rooms.FirstOrDefaultAsync(m => m.Id == id);
+            
+            if (room == null) NotFound();
+
             var permission = await GetUserPermission(room.Id);
             if (permission == null || permission.Permission < RoomPermissionLevel.Owner)
             {
-                return View("AccessDenied");
+                return Forbid();
             }
-
 
 
             return View(room);
@@ -210,18 +184,15 @@ namespace RoomManagerApp.Controllers
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
             var room = await _context.Rooms.FindAsync(id);
+            if (room == null) return NotFound();
 
             var permission = await GetUserPermission(room.Id);
             if (permission == null || permission.Permission < RoomPermissionLevel.Owner)
             {
-                return View("AccessDenied");
+                return Forbid();
             }
 
-            if (room != null)
-            {
-                _context.Rooms.Remove(room);
-            }
-
+            _context.Rooms.Remove(room);
             await _context.SaveChangesAsync();
             return RedirectToAction(nameof(Index));
         }
@@ -247,7 +218,7 @@ namespace RoomManagerApp.Controllers
             var permission = await GetUserPermission(room.Id);
             if (permission == null || permission.Permission < RoomPermissionLevel.Owner)
             {
-                return View("AccessDenied");
+                return Forbid();
             }
             return View(room);
         }
@@ -257,17 +228,18 @@ namespace RoomManagerApp.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> UpdatePermissions(int roomId, int permissionId, RoomPermissionLevel permission)
         {
+            var EditPermission = await GetUserPermission(roomId);
+            if (EditPermission == null || EditPermission.Permission < RoomPermissionLevel.Owner)
+            {
+                return Forbid();
+            }
             var rp = await _context.RoomPermissions.FindAsync(permissionId);
             if (rp != null)
             {
                 rp.Permission = permission;
                 await _context.SaveChangesAsync();
             }
-            var EditPermission = await GetUserPermission(roomId);
-            if (EditPermission == null || EditPermission.Permission < RoomPermissionLevel.Owner)
-            {
-                return View("AccessDenied");
-            }
+
 
             return RedirectToAction(nameof(Permissions), new { id = roomId });
         }
@@ -278,7 +250,13 @@ namespace RoomManagerApp.Controllers
         public async Task<IActionResult> AddUserToRoom(int roomId, string userId, RoomPermissionLevel permission)
         {
             var exists = await _context.RoomPermissions
-                .AnyAsync(rp => rp.RoomId == roomId && rp.UserId == userId);
+                .AnyAsync(rp => rp.RoomId == roomId);
+
+            var EditPermission = await GetUserPermission(roomId);
+            if (EditPermission == null || EditPermission.Permission < RoomPermissionLevel.Owner)
+            {
+                return Forbid();
+            }
 
             if (!exists)
             {
@@ -290,12 +268,8 @@ namespace RoomManagerApp.Controllers
                 });
                 await _context.SaveChangesAsync();
             }
-            var EditPermission = await GetUserPermission(roomId);
-            if (EditPermission == null || EditPermission.Permission < RoomPermissionLevel.Owner)
-            {
-                return View("AccessDenied");
-            }
             return RedirectToAction(nameof(Permissions), new { id = roomId });
+
         }
 
 
@@ -315,7 +289,7 @@ namespace RoomManagerApp.Controllers
             var EditPermission = await GetUserPermission(roomId);
             if (EditPermission == null || EditPermission.Permission < RoomPermissionLevel.Owner)
             {
-                return View("AccessDenied");
+                return Forbid();
             }
             return RedirectToAction(nameof(Permissions), new { id = roomId });
         }

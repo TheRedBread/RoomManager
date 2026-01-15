@@ -62,9 +62,9 @@ namespace RoomManagerApp.Controllers
 
         }
 
-        // GET: api/Rooms/Details/5
+        // GET: api/Rooms/id
         [Authorize]
-        [HttpGet("Details/{id}")]
+        [HttpGet("{id}")]
         public async Task<IActionResult> Details(int? id)
         {
             if (id == null) return NotFound();
@@ -107,8 +107,8 @@ namespace RoomManagerApp.Controllers
 
 
 
-        // POST: api/Rooms/Create
-        [HttpPost("Create")]
+        // POST: api/Rooms/
+        [HttpPost]
         [Authorize]
         public async Task<IActionResult> Create([FromBody] CreateRoomDTO model)
         {
@@ -123,6 +123,8 @@ namespace RoomManagerApp.Controllers
             var room = new Room
             {
                 Name = model.Name,
+                CreatedAt = DateTime.Now,
+                UpdatedAt = DateTime.Now,
                 Permissions = new List<RoomPermission>()
             };
 
@@ -142,9 +144,128 @@ namespace RoomManagerApp.Controllers
             await _context.SaveChangesAsync();
 
 
-            return Ok();
+            return Created();
+        }
+        //PUT: api/Rooms/id
+        [HttpPut("{id}")]
+        public async Task<IActionResult> Edit(int? id, [FromBody] EditRoomDTO model)
+        {
+            if (!ModelState.IsValid) { return BadRequest(); }
+
+            var room = await _context.Rooms.FindAsync(id);
+            if (room == null) return NotFound();
+
+            var permission = await GetUserPermission(room.Id);
+            if (permission == null || permission.Permission < RoomPermissionLevel.Editor)
+            {
+                return Forbid();
+            }
+
+            if (model.Name != null) room.Name = model.Name;
+
+            if (model.Description != null) room.Description = model.Description;
+            if (model.OrganizationId.HasValue) room.OrganizationId = model.OrganizationId.Value;
+            
+            room.UpdatedAt = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+
+            return NoContent();
+
         }
 
+        // POST: api/Rooms/id
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> Delete(int id)
+        {
+            var room = await _context.Rooms.FindAsync(id);
+            if (room == null) return NotFound();
 
+            var permission = await GetUserPermission(room.Id);
+            if (permission == null || permission.Permission < RoomPermissionLevel.Owner)
+            {
+                return Forbid();
+            }
+
+            _context.Rooms.Remove(room);
+            await _context.SaveChangesAsync();
+            return NoContent();
+        }
+
+        // ---------------------------------- PERMISSIONS --------------------------//
+        // GET : api/Rooms/{id}/Permissions
+        [HttpGet("{id}/Permissions")]
+        public async Task<IActionResult> Permissions(int id)
+        {
+            var room = await _context.Rooms
+                .Include(r => r.Permissions)
+                .ThenInclude(p => p.User)
+                .FirstOrDefaultAsync(r => r.Id == id);
+
+            if (room == null) return NotFound();
+
+            var permission = await GetUserPermission(room.Id);
+            if (permission == null || permission.Permission < RoomPermissionLevel.Owner)
+            {
+                return Forbid();
+            }
+
+            var result = room.Permissions.Select(p => new RoomPermissionDTO
+            {
+                Id = p.Id,
+                RoomId = room.Id,
+                RoomName = room.Name,
+                UserId = p.UserId,
+                UserName = p.User.UserName,
+                Permission = p.Permission
+            }).ToList();
+
+
+            return Ok(result);
+        }
+
+        // POST: api/Rooms/{id}/Permissions
+        [HttpPost("{id}/Permissions")]
+        public async Task<IActionResult> AddUserToRoom(int id, CreateRoomPermissionDTO model)
+        {
+
+            if (model == null || string.IsNullOrEmpty(model.Email))
+                return BadRequest();
+
+            var room = await _context.Rooms
+                .Include(r => r.Permissions)
+                .ThenInclude(p => p.User)
+                .FirstOrDefaultAsync(r => r.Id == id);
+
+            if (room == null) return NotFound();
+            var permission = await GetUserPermission(room.Id);
+            if (permission == null || permission.Permission < RoomPermissionLevel.Owner)
+            {
+                return Forbid();
+            }
+
+            var user = await _context.Users
+                .FirstOrDefaultAsync(u => u.Email == model.Email);
+
+
+            var alreadyExists = await _context.RoomPermissions
+                .AnyAsync(rp => rp.RoomId == id && rp.UserId == user.Id);
+
+            if (alreadyExists) return BadRequest("User already in room");
+
+            _context.RoomPermissions.Add(new RoomPermission
+            {
+                RoomId = id,
+                UserId = user.Id,
+                Permission = model.Permission
+            });
+            await _context.SaveChangesAsync();
+
+            return NoContent();
+        }
+    
+    
+    
+    
     }
 }

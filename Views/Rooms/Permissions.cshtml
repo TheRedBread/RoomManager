@@ -1,13 +1,12 @@
 ﻿@model RoomManagerApp.Models.Room
 @using Microsoft.AspNetCore.Identity
-@using RoomManagerApp.Models
 @inject UserManager<Users> UserManager
 
-<h2>Permissions for @Model.Name</h2>
+<h2 class="mb-4">Permissions for @Model.Name</h2>
 
-
-<table class="table">
-    <thead>
+<!-- Permissions Table -->
+<table class="table table-hover align-middle">
+    <thead class="table-light">
         <tr>
             <th>User</th>
             <th>Permission</th>
@@ -18,33 +17,25 @@
         @foreach (var perm in Model.Permissions)
         {
             <tr>
-                <td>@perm.User.UserName</td>
+                <td class="fw-semibold">@perm.User.UserName</td>
+
+                <!-- Update Permission -->
                 <td>
-                    <form asp-controller="Rooms" 
-                          asp-action="UpdatePermissions"
-                          asp-route-id="@Model.Id"
-                        method="post">
+                    <form asp-controller="Rooms" asp-action="UpdatePermissions" method="post" class="d-flex gap-2">
                         <input type="hidden" name="roomId" value="@Model.Id" />
                         <input type="hidden" name="permissionId" value="@perm.Id" />
-                        <select name="permission" class="form-select">
-
-                            <option value="Viewer"
-                                    selected="@(perm.Permission == RoomPermissionLevel.Viewer)">Viewer</option>
-
-                            <option value="Editor"
-                                    selected="@(perm.Permission == RoomPermissionLevel.Editor)">Editor</option>
-
-                            <option value="Owner" 
-                                    selected="@(perm.Permission == RoomPermissionLevel.Owner)">Owner</option>
+                        <select name="permission" class="form-select form-select-sm">
+                            <option value="Viewer" selected="@(perm.Permission == RoomPermissionLevel.Viewer)">Viewer</option>
+                            <option value="Editor" selected="@(perm.Permission == RoomPermissionLevel.Editor)">Editor</option>
+                            <option value="Owner" selected="@(perm.Permission == RoomPermissionLevel.Owner)">Owner</option>
                         </select>
                         <button type="submit" class="btn btn-primary btn-sm">Update</button>
                     </form>
                 </td>
+
+                <!-- Remove User -->
                 <td>
-                    <form asp-controller="Rooms"
-                        asp-action="RemoveUserFromRoom" 
-                        asp-route-id="@Model.Id"
-                        method="post">
+                    <form asp-controller="Rooms" asp-action="RemoveUserFromRoom" method="post">
                         <input type="hidden" name="roomId" value="@Model.Id" />
                         <input type="hidden" name="userId" value="@perm.UserId" />
                         <button type="submit" class="btn btn-danger btn-sm">Remove</button>
@@ -55,22 +46,28 @@
     </tbody>
 </table>
 
-<h3>Add User</h3>
-<form asp-controller="Rooms"
-    asp-action="AddUserToRoom" 
-    asp-route-id="@Model.Id"
-    method="post">
+<!-- Add User -->
+<h4 class="mt-4 mb-2">Add User</h4>
+<form asp-controller="Rooms" asp-action="AddUserToRoom" method="post" class="d-flex gap-2 align-items-center">
     <input type="hidden" name="roomId" value="@Model.Id" />
-    <select name="userId" class="form-select">
+
+    <select name="userId" class="form-select form-select-sm" style="flex:1" required>
+        <option value="">Select user</option>
         @foreach (var user in UserManager.Users)
         {
             <option value="@user.Id">@user.UserName</option>
         }
     </select>
-    <select name="permission" class="form-select">
+
+    <select name="permission" class="form-select form-select-sm" style="width:120px" required>
         <option value="Viewer">Viewer</option>
         <option value="Editor">Editor</option>
         <option value="Owner">Owner</option>
     </select>
-    <button type="submit" class="btn btn-success mt-2">Add User</button>
+
+    <button type="submit" class="btn btn-success btn-sm">Add User</button>
 </form>
+
+<p class="mt-3">
+    <a asp-action="Index" class="text-decoration-none">&larr; Back to Rooms</a>
+</p>
