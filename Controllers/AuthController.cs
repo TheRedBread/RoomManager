@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Identity.Data;
 using Microsoft.AspNetCore.Mvc;
 using RoomManagerApp.Models;
+using RoomManagerApp.Models.Dto;
 
 namespace RoomManagerApp.Controllers
 {
@@ -18,30 +19,31 @@ namespace RoomManagerApp.Controllers
         }
 
         [HttpPost("register")]
-        public async Task<IActionResult> Register([FromBody] RegisterRequest model)
+        public async Task<IActionResult> Register([FromBody] RegisterDTO model)
         {
             if (!ModelState.IsValid) return BadRequest(ModelState);
 
             var user = new Users
             {
                 UserName = model.Email,
-                NormalizedUserName = model.Email.ToUpper(),
+                NormalizedUserName = model.Email?.ToUpper(),
                 Email = model.Email,
-                NormalizedEmail = model.Email.ToUpper()
+                NormalizedEmail = model.Email?.ToUpper()
             };
 
             var result = await _userManager.CreateAsync(user, model.Password);
 
             if (!result.Succeeded) return BadRequest();
 
-            await _signInManager.SignInAsync(user, isPersistent: true);
+            await _signInManager.SignInAsync(user, isPersistent: false);
 
             return Ok(new { Message = "Registered" });
+
         }
 
         // POST: api/auth/login
         [HttpPost("login")]
-        public async Task<IActionResult> Login([FromBody] LoginRequest model)
+        public async Task<IActionResult> Login([FromBody] LoginDTO model)
         {
             if (!ModelState.IsValid) return BadRequest(ModelState);
 
