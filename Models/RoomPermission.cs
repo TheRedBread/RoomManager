@@ -1,24 +1,23 @@
 ﻿using Microsoft.AspNetCore.Identity;
 
-namespace RoomManagerApp.Models
+namespace RoomManagerApp.Models;
+
+public enum RoomPermissionLevel
 {
-    public enum RoomPermissionLevel
-    {
-        Viewer, // 0
-        Editor, // 1
-        Owner // 2
-    }
+    Viewer, // 0
+    Editor, // 1
+    Owner // 2
+}
 
-    public class RoomPermission
-    {
-        public int Id { get; set; }
+public class RoomPermission
+{
+    public int Id { get; set; }
 
-        public int RoomId { get; set; }
-        public Room Room { get; set; } = default!;
+    public int RoomId { get; set; }
+    public Room Room { get; set; } = default!;
 
-        public string UserId { get; set; } = default!;
-        public Users User { get; set; } = default!;
+    public string UserId { get; set; } = default!;
+    public Users User { get; set; } = default!;
 
-        public RoomPermissionLevel Permission { get; set; }
-    }
+    public RoomPermissionLevel Permission { get; set; }
 }

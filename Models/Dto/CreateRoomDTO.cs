@@ -1,15 +1,15 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace RoomManagerApp.Models.Dto
+namespace RoomManagerApp.Models.Dto;
+
+public class CreateRoomDTO
 {
-    public class CreateRoomDTO
-    {
 
-        public int? OrganizationId { get; set; }
+    public int? OrganizationId { get; set; }
 
-        [Required]
-        public string Name { get; set; } = default!;
+    [StringLength(100)]
+    [Required]
+    public string Name { get; set; } = default!;
 
-        public string? Description { get; set; }
-    }
+    public string? Description { get; set; }
 }

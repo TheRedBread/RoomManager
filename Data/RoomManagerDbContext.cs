@@ -2,83 +2,82 @@
 using Microsoft.EntityFrameworkCore;
 using RoomManagerApp.Models;
 
-namespace RoomManagerApp.Data
+namespace RoomManagerApp.Data;
+
+public class RoomManagerDbContext : IdentityDbContext<Users>
 {
-    public class RoomManagerDbContext : IdentityDbContext<Users>
+
+    public DbSet<Room> Rooms { get; set; }
+    public DbSet<RoomPermission> RoomPermissions { get; set; }
+
+    public RoomManagerDbContext(DbContextOptions<RoomManagerDbContext> options) : base(options) { }
+
+
+    protected override void OnModelCreating(ModelBuilder builder)
     {
+        base.OnModelCreating(builder);
 
-        public DbSet<Room> Rooms { get; set; }
-        public DbSet<RoomPermission> RoomPermissions { get; set; }
+        // RoomPermission -> Room
+        builder.Entity<RoomPermission>()
+            .HasOne(rp => rp.Room)
+            .WithMany(r => r.Permissions)
+            .HasForeignKey(rp => rp.RoomId)
+            .OnDelete(DeleteBehavior.Cascade);
 
-        public RoomManagerDbContext(DbContextOptions<RoomManagerDbContext> options) : base(options) { }
+        // RoomPermission -> User
+        builder.Entity<RoomPermission>()
+            .HasOne(rp => rp.User)
+            .WithMany()
+            .HasForeignKey(rp => rp.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+    }
 
 
-        protected override void OnModelCreating(ModelBuilder builder)
+    public override int SaveChanges()
+    {
+        var now = DateTime.UtcNow;
+
+        // Przypisanie nowo utworzonym wpisom Room odpowiedni Czas Stworzenia do 
+        foreach (var entry in ChangeTracker.Entries<Room>()
+            .Where(e => e.State == EntityState.Added))
         {
-            base.OnModelCreating(builder);
+            entry.Entity.CreatedAt = now;
+            entry.Entity.UpdatedAt = now;
 
-            // RoomPermission -> Room
-            builder.Entity<RoomPermission>()
-                .HasOne(rp => rp.Room)
-                .WithMany(r => r.Permissions)
-                .HasForeignKey(rp => rp.RoomId)
-                .OnDelete(DeleteBehavior.Cascade);
-
-            // RoomPermission -> User
-            builder.Entity<RoomPermission>()
-                .HasOne(rp => rp.User)
-                .WithMany()
-                .HasForeignKey(rp => rp.UserId)
-                .OnDelete(DeleteBehavior.Cascade);
         }
 
-
-        public override int SaveChanges()
+        // Przypisanie zmodyfikowanym wpisom Room odpowiedni Czas Stworzenia do UpdatedAt
+        foreach (var entry in ChangeTracker.Entries<Room>()
+            .Where(e => e.State == EntityState.Modified))
         {
-            var now = DateTime.UtcNow;
+            entry.Entity.UpdatedAt = now;
+            entry.Property(x => x.CreatedAt).IsModified = false;
+        }
 
-            // Przypisanie nowo utworzonym wpisom Room odpowiedni Czas Stworzenia do 
-            foreach (var entry in ChangeTracker.Entries<Room>()
-                .Where(e => e.State == EntityState.Added))
+        return base.SaveChanges();
+    }
+
+    public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+    {
+        var now = DateTime.UtcNow;
+
+        foreach (var entry in ChangeTracker.Entries<Room>())
+        {
+            if (entry.State == EntityState.Added)
             {
                 entry.Entity.CreatedAt = now;
                 entry.Entity.UpdatedAt = now;
-
             }
-
-            // Przypisanie zmodyfikowanym wpisom Room odpowiedni Czas Stworzenia do UpdatedAt
-            foreach (var entry in ChangeTracker.Entries<Room>()
-                .Where(e => e.State == EntityState.Modified))
+            else if (entry.State == EntityState.Modified)
             {
                 entry.Entity.UpdatedAt = now;
                 entry.Property(x => x.CreatedAt).IsModified = false;
             }
-
-            return base.SaveChanges();
         }
 
-        public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
-        {
-            var now = DateTime.UtcNow;
-
-            foreach (var entry in ChangeTracker.Entries<Room>())
-            {
-                if (entry.State == EntityState.Added)
-                {
-                    entry.Entity.CreatedAt = now;
-                    entry.Entity.UpdatedAt = now;
-                }
-                else if (entry.State == EntityState.Modified)
-                {
-                    entry.Entity.UpdatedAt = now;
-                    entry.Property(x => x.CreatedAt).IsModified = false;
-                }
-            }
-
-            return await base.SaveChangesAsync(cancellationToken);
-        }
-
-
-
+        return await base.SaveChangesAsync(cancellationToken);
     }
+
+
+
 }

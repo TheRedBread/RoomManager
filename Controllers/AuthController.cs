@@ -4,64 +4,63 @@ using Microsoft.AspNetCore.Mvc;
 using RoomManagerApp.Models;
 using RoomManagerApp.Models.Dto;
 
-namespace RoomManagerApp.Controllers
+namespace RoomManagerApp.Controllers;
+
+[Route("api/Auth")]
+[ApiController]
+public class AuthController : ControllerBase
 {
-    [Route("api/Auth")]
-    [ApiController]
-    public class AuthController : ControllerBase
+    private readonly UserManager<Users> _userManager;
+    private readonly SignInManager<Users> _signInManager;
+    public AuthController(UserManager<Users> userManager, SignInManager<Users> signInManager)
     {
-        private readonly UserManager<Users> _userManager;
-        private readonly SignInManager<Users> _signInManager;
-        public AuthController(UserManager<Users> userManager, SignInManager<Users> signInManager)
+        _userManager = userManager;
+        _signInManager = signInManager;
+    }
+
+    [HttpPost("register")]
+    public async Task<IActionResult> Register([FromBody] RegisterDTO model)
+    {
+        if (!ModelState.IsValid) return BadRequest(ModelState);
+
+        var user = new Users
         {
-            _userManager = userManager;
-            _signInManager = signInManager;
-        }
+            UserName = model.Email,
+            NormalizedUserName = model.Email?.ToUpper(),
+            Email = model.Email,
+            NormalizedEmail = model.Email?.ToUpper()
+        };
 
-        [HttpPost("register")]
-        public async Task<IActionResult> Register([FromBody] RegisterDTO model)
-        {
-            if (!ModelState.IsValid) return BadRequest(ModelState);
+        var result = await _userManager.CreateAsync(user, model.Password);
 
-            var user = new Users
-            {
-                UserName = model.Email,
-                NormalizedUserName = model.Email?.ToUpper(),
-                Email = model.Email,
-                NormalizedEmail = model.Email?.ToUpper()
-            };
+        if (!result.Succeeded) return BadRequest();
 
-            var result = await _userManager.CreateAsync(user, model.Password);
+        await _signInManager.SignInAsync(user, isPersistent: false);
 
-            if (!result.Succeeded) return BadRequest();
-
-            await _signInManager.SignInAsync(user, isPersistent: false);
-
-            return Ok(new { Message = "Registered" });
-
-        }
-
-        // POST: api/auth/login
-        [HttpPost("login")]
-        public async Task<IActionResult> Login([FromBody] LoginDTO model)
-        {
-            if (!ModelState.IsValid) return BadRequest(ModelState);
-
-            var result = await _signInManager.PasswordSignInAsync(model.Email, model.Password, true, false);
-
-            if (!result.Succeeded)
-                return Unauthorized("Invalid username or password");
-
-            return Ok(new { Message = "Logged in" });
-        }
-
-        // POST: api/auth/logout
-        [HttpPost("logout")]
-        public async Task<IActionResult> Logout()
-        {
-            await _signInManager.SignOutAsync();
-            return Ok(new { Message = "Logged out!" });
-        }
+        return Ok(new { Message = "Registered" });
 
     }
+
+    // POST: api/auth/login
+    [HttpPost("login")]
+    public async Task<IActionResult> Login([FromBody] LoginDTO model)
+    {
+        if (!ModelState.IsValid) return BadRequest(ModelState);
+
+        var result = await _signInManager.PasswordSignInAsync(model.Email, model.Password, true, false);
+
+        if (!result.Succeeded)
+            return Unauthorized("Invalid username or password");
+
+        return Ok(new { Message = "Logged in" });
+    }
+
+    // POST: api/auth/logout
+    [HttpPost("logout")]
+    public async Task<IActionResult> Logout()
+    {
+        await _signInManager.SignOutAsync();
+        return Ok(new { Message = "Logged out!" });
+    }
+
 }
